@@ -22,6 +22,7 @@ import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.NoSuchPortException;
 import gnu.io.PortInUseException;
+import gnu.io.RXTXCommDriver;
 import gnu.io.SerialPort;
 import gnu.io.SerialPortEvent;
 import gnu.io.SerialPortEventListener;
@@ -96,8 +97,8 @@ public class ZigBeeSerialPort implements ZigBeePort, SerialPortEventListener {
     /**
      * Constructor setting port name and baud rate.
      *
-     * @param portName the port name
-     * @param baudRate the baud rate
+     * @param portName    the port name
+     * @param baudRate    the baud rate
      * @param flowControl to use flow control
      */
     public ZigBeeSerialPort(String portName, int baudRate, FlowControl flowControl) {
@@ -122,8 +123,16 @@ public class ZigBeeSerialPort implements ZigBeePort, SerialPortEventListener {
             logger.debug("Connecting to serial port [{}] at {} baud, flow control {}.", portName, baudRate,
                     flowControl);
             try {
-                CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
-                CommPort commPort = portIdentifier.open("org.openhab.binding.zigbee", 100);
+                CommPort commPort;
+                if (System.getProperty("os.name").toLowerCase().indexOf("windows") != -1) {
+                    RXTXCommDriver RXTXDriver = new RXTXCommDriver();
+                    RXTXDriver.initialize();
+                    commPort = RXTXDriver.getCommPort(portName, CommPortIdentifier.PORT_SERIAL);
+                } else {
+                    CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
+                    commPort = portIdentifier.open("org.openhab.binding.zigbee", 100);
+                }
+
                 serialPort = (SerialPort) commPort;
                 serialPort.setSerialPortParams(baudRate, SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
                         SerialPort.PARITY_NONE);
