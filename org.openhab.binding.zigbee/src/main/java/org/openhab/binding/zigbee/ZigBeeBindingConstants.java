@@ -181,6 +181,9 @@ public class ZigBeeBindingConstants {
     public final static Integer FLOWCONTROL_CONFIG_HARDWARE_CTSRTS = Integer.valueOf(1);
     public final static Integer FLOWCONTROL_CONFIG_SOFTWARE_XONXOFF = Integer.valueOf(2);
 
+    // List of channels
+    public final static String CHANNEL_SERIAL_LIFETICK = "serial_lifetick";
+
     /**
      * Return an ISO 8601 combined date and time string for current date/time
      *
@@ -195,7 +198,7 @@ public class ZigBeeBindingConstants {
      * Return an ISO 8601 combined date and time string for specified date/time
      *
      * @param date
-     *            Date
+     *                 Date
      * @return String with format "yyyy-MM-dd'T'HH:mm:ss'Z'"
      */
     public static String getISO8601StringForDate(Date date) {

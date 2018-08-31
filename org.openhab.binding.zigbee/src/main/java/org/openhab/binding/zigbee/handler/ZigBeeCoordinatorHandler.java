@@ -18,12 +18,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.common.registry.Identifiable;
+import org.eclipse.smarthome.core.library.types.DecimalType;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -103,6 +106,8 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
     private boolean macAddressSet = false;
 
     private final int MESH_UPDATE_TIME = 300;
+
+    private int lifetick = 0;
 
     /**
      * Set to true on startup if we want to reinitialize the network
@@ -304,9 +309,9 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
      * Common initialisation point for all ZigBee coordinators.
      * Called by bridge implementations after they have initialised their interfaces.
      *
-     * @param zigbeeTransport a {@link ZigBeeTransportTransmit} interface instance
-     * @param transportConfig any binding specific configuration that needs to be sent
-     * @param serializerClass a {@link ZigBeeSerializer} Class
+     * @param zigbeeTransport   a {@link ZigBeeTransportTransmit} interface instance
+     * @param transportConfig   any binding specific configuration that needs to be sent
+     * @param serializerClass   a {@link ZigBeeSerializer} Class
      * @param deserializerClass a {@link ZigBeeDeserializer} Class
      */
     protected void startZigBee(ZigBeeTransportTransmit zigbeeTransport, TransportConfig transportConfig,
@@ -321,6 +326,10 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
         // Start the network. This is a scheduled task to ensure we give the coordinator
         // some time to initialise itself!
         startZigBeeNetwork();
+
+        // Start a task to watch if the connection to the zigbeemodle is still alive
+        startZigBeeIsAliveDetection();
+
     }
 
     /**
@@ -433,6 +442,41 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
             restartJob = null;
             initialiseZigBee();
         }, 1, TimeUnit.SECONDS);
+    }
+
+    private void startZigBeeIsAliveDetection() {
+        logger.debug("Scheduling startZigBeeIsAliveDetection start");
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+
+            @Override
+            public void run() {
+                if (networkManager == null) {
+                    return;
+                }
+
+                try {
+                    ZigBeeTransportState zts = networkManager.getNetworkState();
+
+                    if (zts == ZigBeeTransportState.ONLINE) {
+                        try {
+                            int c = networkManager.getZigBeeChannel();
+                            lifetick++;
+                            updateState(
+                                    new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_SERIAL_LIFETICK),
+                                    new DecimalType(lifetick));
+                            logger.debug("serial lifetick of zigbee module {}", lifetick);
+                        } catch (Exception e) {
+                            logger.debug("Zigee not alive networkManager.getZigBeeChannel() Exception {}",
+                                    e.toString());
+                        }
+
+                    }
+                } catch (Exception e) {
+                    logger.debug("startZigBeeIsAliveDetection general Exception {}", e.toString());
+                }
+            }
+        }, 0, 20000);
     }
 
     @Override
@@ -681,7 +725,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
     /**
      * Permit joining only for the specified node
      *
-     * @param address the 16 bit network address of the node to enable joining
+     * @param address  the 16 bit network address of the node to enable joining
      * @param duration the duration of the join
      */
     public boolean permitJoin(IeeeAddress address, int duration) {

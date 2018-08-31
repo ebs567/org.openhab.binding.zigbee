@@ -8,6 +8,10 @@
 		<label>XBee Coordinator</label>
 		<description>XBee USB Stick</description>
 
+        <channels>
+            <channel> id="serial_lifetick" typeId="serial_lifetick" </channel>
+        </channels>
+
         <config-description>
             <parameter-group name="network">
                 <context></context>
@@ -102,6 +106,11 @@
             </parameter>
 
 		</config-description>
-
+        <channel-type id="serial_lifetick"> 
+            <item-type>Number</item-type>
+            <description>lifetick counter to check if the xbee board is alive</description>
+            <category>Temperature</category>
+            <state pattern"%d" readOnly="true"></state>
+        </channel-type>
 	</bridge-type>
 </thing:thing-descriptions>
